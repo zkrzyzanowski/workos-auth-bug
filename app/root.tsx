@@ -4,10 +4,12 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLocation,
 } from "@remix-run/react";
 import type { LinksFunction } from "@remix-run/node";
-
+import { useEffect } from "react";
 import "./tailwind.css";
+import { AuthKitProvider, useAuth } from "@workos-inc/authkit-react";
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -32,7 +34,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {children}
+        <AuthKitProvider
+          devMode={false}
+          clientId={import.meta.env.VITE_WORKOS_CLIENT_ID}
+        >
+          <RequireAuth>{children}</RequireAuth>
+        </AuthKitProvider>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -46,4 +53,27 @@ export default function App() {
 
 export function HydrateFallback() {
   return <p>Loading...</p>;
+}
+
+export type AuthProps = {
+  children: React.ReactNode;
+};
+
+export function RequireAuth({ children }: AuthProps) {
+  const { user, isLoading, signIn } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      signIn({
+        state: { returnTo: location },
+      });
+    }
+  }, [isLoading, signIn, user, location]);
+
+  if (isLoading || !user) {
+    return <>...Loading</>;
+  }
+
+  return children;
 }
